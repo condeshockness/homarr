@@ -49,6 +49,12 @@ color() {
 
 APP="homarr"
 
+msg_error() {
+  
+  local msg="$1"
+  printf "\r\e[2K%s %b\n" "${CROSS}" "${RD}${msg}${CL}" >&2
+}
+
 
 color
 
