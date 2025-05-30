@@ -49,17 +49,14 @@ color() {
 
 APP="homarr"
 
-header_info "$APP"
-
 msg_error() {
   stop_spinner
   local msg="$1"
   printf "\r\e[2K%s %b\n" "${CROSS}" "${RD}${msg}${CL}" >&2
 }
 
-variables
 color
-catch_errors
+
 
   if [[ ! -d /opt/homarr ]]; then
     msg_error "No ${APP} Installation Found!"
