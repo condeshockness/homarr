@@ -49,14 +49,83 @@ color() {
 
 APP="homarr"
 
+header_info "$APP"
+
+# This function displays an informational message with logging support.
+declare -A MSG_INFO_SHOWN
+SPINNER_ACTIVE=0
+SPINNER_PID=""
+SPINNER_MSG=""
+
+trap 'stop_spinner' EXIT INT TERM HUP
+
+start_spinner() {
+  local msg="$1"
+  local frames=(⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏)
+  local spin_i=0
+  local interval=0.1
+
+  SPINNER_MSG="$msg"
+  printf "\r\e[2K" >&2
+
+  {
+    while [[ "$SPINNER_ACTIVE" -eq 1 ]]; do
+      printf "\r\e[2K%s %b" "${frames[spin_i]}" "${YW}${SPINNER_MSG}${CL}" >&2
+      spin_i=$(((spin_i + 1) % ${#frames[@]}))
+      sleep "$interval"
+    done
+  } &
+
+  SPINNER_PID=$!
+  disown "$SPINNER_PID"
+}
+
+stop_spinner() {
+  if [[ ${SPINNER_PID+v} && -n "$SPINNER_PID" ]] && kill -0 "$SPINNER_PID" 2>/dev/null; then
+    kill "$SPINNER_PID" 2>/dev/null
+    sleep 0.1
+    kill -0 "$SPINNER_PID" 2>/dev/null && kill -9 "$SPINNER_PID" 2>/dev/null
+    wait "$SPINNER_PID" 2>/dev/null || true
+  fi
+  SPINNER_ACTIVE=0
+  unset SPINNER_PID
+}
+
+spinner_guard() {
+  if [[ "$SPINNER_ACTIVE" -eq 1 ]] && [[ -n "$SPINNER_PID" ]]; then
+    kill "$SPINNER_PID" 2>/dev/null
+    wait "$SPINNER_PID" 2>/dev/null || true
+    SPINNER_ACTIVE=0
+    unset SPINNER_PID
+  fi
+}
+
+msg_info() {
+  local msg="$1"
+  [[ -n "${MSG_INFO_SHOWN["$msg"]+x}" ]] && return
+  MSG_INFO_SHOWN["$msg"]=1
+
+  spinner_guard
+  SPINNER_ACTIVE=1
+  start_spinner "$msg"
+}
+
+msg_ok() {
+  local msg="$1"
+  stop_spinner
+  printf "\r\e[2K%s %b\n" "${CM}" "${GN}${msg}${CL}" >&2
+  unset MSG_INFO_SHOWN["$msg"]
+}
+
 msg_error() {
   stop_spinner
   local msg="$1"
   printf "\r\e[2K%s %b\n" "${CROSS}" "${RD}${msg}${CL}" >&2
 }
 
+variables
 color
-
+catch_errors
 
   if [[ ! -d /opt/homarr ]]; then
     msg_error "No ${APP} Installation Found!"
